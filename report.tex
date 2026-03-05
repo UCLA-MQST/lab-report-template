@@ -160,7 +160,7 @@
     \begin{tabularx}{\linewidth}{llp{1.6cm}X}\toprule
       Category & Component & Part\,\# & Notes / key specs \\\midrule
       \csvreader[late after line=\\]{#1}%
-        {Category=\Cat,Component=\Comp,Part Number=\PartNum,Notes / key specs=\Notes}%
+        {Category=\Cat,Component=\Comp,Part=\PartNum,Notes=\Notes}%
         {\Cat & \Comp & \PartNum & \Notes}%
       \\\bottomrule
     \end{tabularx}
