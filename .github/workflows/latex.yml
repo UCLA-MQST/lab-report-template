@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ── 1. Python unit tests ────────────────────────────────────────────────
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        run: python -m pytest pycode/tests/ -v --tb=short
+
+  # ── 2. Compile LaTeX report (with Snakemake pre-pass) ───────────────────
+  build-pdf:
+    runs-on: ubuntu-latest
+    needs: test-python
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Cache Python venv
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run Snakemake pipeline
+        run: |
+          source venv/bin/activate
+          mkdir -p logs .snakemake_cache/Library/Caches
+          HOME=$(pwd)/.snakemake_cache snakemake --cores 2
+
+      - name: Extract notebook fragments
+        run: |
+          source venv/bin/activate
+          python3 pycode/nb_to_report.py pycode/optical_simulator.ipynb
+
+      - name: Compile PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: report.tex
+          compiler: lualatex
+          args: --shell-escape -interaction=nonstopmode
+          extra_system_packages: "python3 py3-pip python3-pygments"
+          pre_compile: |
+            lualatex --shell-escape -interaction=nonstopmode report.tex
+            TMPDIR=/tmp TEXMFVAR=/tmp/texmf-var biber report
+            lualatex --shell-escape -interaction=nonstopmode report.tex
+
+      - name: Upload compiled PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-pdf
+          path: report.pdf
+
+  # ── 3. LaTeX macro smoke tests ──────────────────────────────────────────
+  test-macros:
+    runs-on: ubuntu-latest
+    if: hashFiles('tests/*.tex') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run Snakemake (generate plot deps)
+        run: |
+          source venv/bin/activate
+          mkdir -p .snakemake_cache/Library/Caches
+          HOME=$(pwd)/.snakemake_cache snakemake --cores 2
+
+      - name: Smoke-test LaTeX macros
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: "tests/*.tex"
+          compiler: lualatex
+          args: --shell-escape -interaction=nonstopmode
+          extra_system_packages: "python3 py3-pip python3-pygments"

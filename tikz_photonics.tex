@@ -1,0 +1,63 @@
+% tikz_photonics.tex
+% A custom TikZ library for standard photonics components.
+% Usage: \pic at (x,y) {photonics_laser={Label}};
+%        \pic at (x,y) {photonics_polarizer={Label}};   (angle in optional key)
+%        \pic at (x,y) {photonics_bs={Label}};
+%        \pic at (x,y) {photonics_fiber_bs={Label}};
+%        \pic at (x,y) {photonics_apd={Label}};
+\tikzset{
+    photonics_laser/.pic={
+        \draw[thin, fill=red!15] (-0.6,-0.1) rectangle (0.6,0.1);
+        \node[above, font=\tiny\bfseries] at (0,0.1) {#1};
+    },
+    photonics_bs/.pic={
+        \draw (-0.3,-0.3) rectangle (0.3,0.3);
+        \draw (-0.3,-0.3) -- (0.3,0.3);
+        \node[above left, font=\tiny] at (-0.3, 0.3) {#1};
+    },
+    photonics_mirror_bsp_right/.pic={
+        \draw[thick, fill=gray!20] (-0.4, -0.05) rectangle (0.4, 0.05);
+        \foreach \x in {-0.3,-0.1,0.1,0.3} \draw[thin, gray] (\x, -0.05) -- (\x+0.1, -0.2);
+        \node[anchor=north west, font=\tiny, xshift=5pt, yshift=-5pt] {#1};
+    },
+    photonics_mirror_bsp_left/.pic={
+        \draw[thick, fill=gray!20] (-0.4, -0.05) rectangle (0.4, 0.05);
+        \foreach \x in {-0.3,-0.1,0.1,0.3} \draw[thin, gray] (\x, -0.05) -- (\x-0.1, -0.2);
+        \node[anchor=north east, font=\tiny, xshift=-5pt, yshift=-5pt] {#1};
+    },
+    photonics_mirror_planar/.pic={
+        \draw[line width=3pt,gray!40] (-0.35,0) -- (0.35,0);
+        \draw[line width=1pt,gray] (-0.35,0) -- (0.35,0);
+        \foreach \x in {-0.3,-0.15,0,0.15,0.3} \draw[line width=0.5pt,gray!60] (\x,0) -- (\x-0.08,-0.08);
+        \node[anchor=south west, font=\tiny, xshift=2pt, yshift=2pt] {#1};
+    },
+    photonics_mirror_concave/.pic={
+        \draw[thick, fill=gray!20] (-0.4,0) arc[start angle=150, end angle=30, radius=0.46] -- (0.4,0.05) -- (-0.4,0.05) -- cycle;
+        \foreach \x in {-0.3,-0.1,0.1,0.3} \draw[thin, gray] (\x, 0.05) -- (\x-0.1, 0.2);
+        \node[anchor=south east, font=\tiny, xshift=-5pt, yshift=5pt] {#1}; % M4 (Concave...)
+    },
+    photonics_photodiode/.pic={
+        \draw[thick, fill=green!60!black] (0,0) circle (3pt);
+        \node[right, font=\tiny, text=black, xshift=3pt] {#1};
+    },
+    % Standard APD label alias
+    photonics_apd/.pic={
+        \draw[thick, fill=green!60!black] (0,0) circle (3pt);
+        \node[right, font=\tiny, text=black, xshift=3pt] {#1};
+    },
+    % Polarizer: circle with a diameter line indicating the transmission axis.
+    % Convention follows Hecht "Optics" and Saleh & Teich "Fundamentals of Photonics".
+    % Optional argument rotates the transmission-axis line (default = 0 deg = horizontal).
+    photonics_polarizer/.pic={
+        \draw[thick] (0,0) circle (0.28);
+        % Draw transmission axis as a diameter; 45deg is the classic "diagonal polarizer" icon
+        \draw[thick] ({-0.28*cos(45)},{-0.28*sin(45)}) -- ({0.28*cos(45)},{0.28*sin(45)});
+        \node[above, font=\tiny, yshift=2pt] at (0,0.28) {#1};
+    },
+    % Fiber beam splitter: a rounded rectangle with "50/50" label
+    photonics_fiber_bs/.pic={
+        \draw[thick, rounded corners=3pt, fill=gray!20] (-0.4,-0.2) rectangle (0.4,0.2);
+        \node[font=\tiny\bfseries] at (0,0) {50/50};
+        \node[above, font=\tiny, yshift=1pt] at (0,0.2) {#1};
+    },
+}

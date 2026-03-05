@@ -1,0 +1,4 @@
+Category,Component,Part,Notes
+Laser,Laser head,HNL050L,Manuf. June 2023; 2350 VDC; 6.0 mA
+Optics,BS1 (beamsplitter),CCM1-BS013,"50:50; 400-700 nm"
+Detection,Biased photodetector,DET36A2,350-1100 nm

@@ -1,0 +1,49 @@
+\documentclass[twocolumn, 10pt]{article}
+\usepackage{fullpage}
+\usepackage[top=2cm, bottom=4cm, left=2cm, right=2cm]{geometry}
+\usepackage{amsmath,amsthm,amsfonts,amssymb,amscd}
+\usepackage{csvsimple}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,decorations.pathmorphing,calc}
+
+% Include the new TikZ library
+\input{../tikz_photonics.tex}
+
+% Reusable CSV BOM Macro
+\newcommand{\bomtable}[3]{%
+  \begin{table*}[t]
+    \centering\footnotesize
+    \caption{#2}
+    \label{#3}
+    \renewcommand{\arraystretch}{1.15}
+    \csvreader[
+      tabular={llll},
+      table head={\toprule Category & Component & Part~\# & Notes / key specs \\\midrule},
+      table foot=\bottomrule,
+      late after line=\\,
+    ]{#1}{1=\colone,2=\coltwo,3=\colthree,4=\colfour}{%
+      \colone & \coltwo & \colthree & \colfour
+    }
+  \end{table*}
+}
+
+\begin{document}
+\section{Test BOM}
+\bomtable{../data/bom.csv}{Test Bill of Materials}{tab:test-bom}
+
+\section{Test TikZ}
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \pic (laser) at (0,0) {photonics_laser={HeNe Laser}};
+        \pic (bs1) at (2,0) {photonics_bs={BS1}};
+        \pic (m1) at (2,-2) {photonics_mirror_bsp_right={M1}};
+        \pic (m2) at (4,0) {photonics_mirror_concave={M2}};
+        \pic (detector) at (4,-2) {photonics_photodiode={D1}};
+    \end{tikzpicture}
+\end{figure}
+
+\end{document}
