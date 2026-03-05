@@ -60,17 +60,20 @@ jobs:
           source venv/bin/activate
           python3 pycode/nb_to_report.py pycode/optical_simulator.ipynb
 
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-full biber python3-pygments
+
       - name: Compile PDF
-        uses: xu-cheng/latex-action@v3
-        with:
-          root_file: report.tex
-          compiler: lualatex
-          args: --shell-escape -interaction=nonstopmode
-          extra_system_packages: "python3 py3-pip python3-pygments"
-          pre_compile: |
-            lualatex --shell-escape -interaction=nonstopmode report.tex
-            TMPDIR=/tmp TEXMFVAR=/tmp/texmf-var biber report
-            lualatex --shell-escape -interaction=nonstopmode report.tex
+        run: |
+          source venv/bin/activate
+          # First pass
+          lualatex --shell-escape -interaction=nonstopmode report.tex
+          # Bibliography
+          biber report
+          # Final pass
+          lualatex --shell-escape -interaction=nonstopmode report.tex
 
       - name: Upload compiled PDF
         uses: actions/upload-artifact@v4
@@ -97,12 +100,14 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         if: steps.check-tests.outputs.has_tests == 'true'
         run: |
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y texlive-full python3-pygments
 
       - name: Run Snakemake (generate plot deps)
         if: steps.check-tests.outputs.has_tests == 'true'
@@ -113,9 +118,8 @@ jobs:
 
       - name: Smoke-test LaTeX macros
         if: steps.check-tests.outputs.has_tests == 'true'
-        uses: xu-cheng/latex-action@v3
-        with:
-          root_file: "tests/*.tex"
-          compiler: lualatex
-          args: --shell-escape -interaction=nonstopmode
-          extra_system_packages: "python3 py3-pip python3-pygments"
+        run: |
+          source venv/bin/activate
+          for f in tests/*.tex; do
+            lualatex --shell-escape -interaction=nonstopmode "$f"
+          done

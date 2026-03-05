@@ -53,7 +53,7 @@ def tex_componentlist_py(labparam: str, csv_text: str) -> list[str]:
             continue
         raw = _parse_csv_fields(line)
         lab = raw[4] if len(raw) > 4 else ""
-        if lab == labparam or lab == "both":
+        if lab == labparam or lab == "all":
             comp = raw[1] if len(raw) > 1 else ""
             pn   = raw[2] if len(raw) > 2 else ""
             note = raw[3] if len(raw) > 3 else ""
@@ -75,14 +75,14 @@ def tex_componentlist_py(labparam: str, csv_text: str) -> list[str]:
 SIMPLE_CSV = textwrap.dedent("""\
     Category,Component,Part Number,Notes / key specs,Lab
     Source,Laser,QED-001,CW 810 nm,3a
-    Optics,HWP,QED-010,zero-order; 810 nm,both
+    Optics,HWP,QED-010,zero-order; 810 nm,all
     Detection,APD,QED-020,silicon avalanche; dark counts < 100,3b
     Electronics,TDC,QED-030,1 ns resolution,3a
 """)
 
 QUOTED_FIELD_CSV = textwrap.dedent("""\
     Category,Component,Part Number,Notes / key specs,Lab
-    Optics,BBO Crystal,QED-005,"Type-II SPDC, 810 nm",both
+    Optics,BBO Crystal,QED-005,"Type-II SPDC, 810 nm",all
     Source,Pump Laser,QED-002,"405 nm, 50 mW CW",3a
 """)
 
@@ -99,7 +99,7 @@ class TestFiltering:
 
     def test_both_tag_always_included(self):
         items = tex_componentlist_py("3a", SIMPLE_CSV)
-        assert any("HWP" in i for i in items), "'both' row must appear for any lab tag"
+        assert any("HWP" in i for i in items), "'all' row must appear for any lab tag"
 
     def test_specific_tag_excluded_from_other_lab(self):
         items = tex_componentlist_py("3a", SIMPLE_CSV)
@@ -109,12 +109,12 @@ class TestFiltering:
         items = tex_componentlist_py("3b", SIMPLE_CSV)
         comps = " ".join(items)
         assert "APD"  in comps
-        assert "HWP"  in comps   # 'both'
+        assert "HWP"  in comps   # 'all'
         assert "Laser" not in comps  # 3a only
 
     def test_no_match_returns_empty(self):
-        # Use a CSV that has NO 'both' rows — only lab-specific ones.
-        # 'both' rows always appear for any tag, so SIMPLE_CSV can't be used here.
+        # Use a CSV that has NO 'all' rows — only lab-specific ones.
+        # 'all' rows always appear for any tag, so SIMPLE_CSV can't be used here.
         csv_no_both = textwrap.dedent("""\
             Category,Component,Part Number,Notes / key specs,Lab
             Source,Laser,QED-001,CW 810 nm,3a
@@ -182,7 +182,7 @@ class TestOutputFormat:
 class TestQuotedFields:
     def test_quoted_note_with_comma(self):
         # "Type-II SPDC, 810 nm" must be treated as a single field
-        items = tex_componentlist_py("both", QUOTED_FIELD_CSV)
+        items = tex_componentlist_py("all", QUOTED_FIELD_CSV)
         bbo = next(i for i in items if "BBO" in i)
         assert "Type-II SPDC" in bbo
 
@@ -211,8 +211,8 @@ BOM_PATHS = [
 @pytest.mark.parametrize("bom_path", [p for p in BOM_PATHS if p.exists()])
 def test_real_bom_loads_without_error(bom_path):
     text = bom_path.read_text(encoding="utf-8")
-    # Should not raise and should return at least one item for 'both'
-    items = tex_componentlist_py("both", text)
+    # Should not raise and should return at least one item for 'all'
+    items = tex_componentlist_py("all", text)
     assert isinstance(items, list)
     # Each item must be a non-empty string starting with \item
     for item in items:
@@ -220,15 +220,15 @@ def test_real_bom_loads_without_error(bom_path):
 
 
 @pytest.mark.parametrize("bom_path", [p for p in BOM_PATHS if p.exists()])
-@pytest.mark.parametrize("tag", ["3a", "3b", "both"])
+@pytest.mark.parametrize("tag", ["3a", "3b", "all"])
 def test_real_bom_tag_filter_is_subset(bom_path, tag):
     text = bom_path.read_text(encoding="utf-8")
     items_tag  = tex_componentlist_py(tag, text)
-    items_both = tex_componentlist_py("both", text)
-    # Items for a specific tag must be a superset of 'both'-tagged items
-    # (every 'both' item is also included for any specific tag)
+    items_both = tex_componentlist_py("all", text)
+    # Items for a specific tag must be a superset of 'all'-tagged items
+    # (every 'all' item is also included for any specific tag)
     both_comps = {i for i in items_both}
     for item in both_comps:
         assert item in tex_componentlist_py(tag, text), (
-            f"'both'-tagged item missing from '{tag}' results: {item!r}"
+            f"'all'-tagged item missing from '{tag}' results: {item!r}"
         )

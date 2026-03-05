@@ -213,13 +213,17 @@ class TestPyBundle:
 
 class TestBackwardCompatShim:
     def test_extract_shim_same_output_as_class(self, simple_nb, tmp_nb_dir):
-        """extract() and NotebookExtractor().run() produce the same code_tex."""
+        """Both NotebookExtractor runs produce code_tex with the same cell headings."""
         # Run via class directly with explicit paths
         ex = _make_extractor(simple_nb, tmp_nb_dir)
         ex.run()
-        class_output = (tmp_nb_dir / "auto_nb_code.tex").read_text()
+        # auto_nb_code.tex contains LaTeX \lstinputlisting lines (not raw code)
+        # Check the runnable bundle for the actual cell code
+        bundle = (tmp_nb_dir / "pycode" / "nb_cells" / "nb_cells.py").read_text()
+        assert "import math" in bundle
+        assert "answer = 42" in bundle
 
-        # Re-run via shim into a fresh subdir
+        # Re-run via a fresh extractor (same as shim's NotebookExtractor path)
         sub = tmp_nb_dir / "shim_run"
         sub.mkdir()
         (sub / "plots").mkdir()
@@ -232,8 +236,9 @@ class TestBackwardCompatShim:
             plots_dir=sub / "plots",
         )
         shim_ex.run()
-        shim_output = (sub / "auto_nb_code.tex").read_text()
+        shim_bundle = (sub / "pycode" / "nb_cells" / "nb_cells.py").read_text()
 
-        # Both should contain the same code cells
-        assert "import math" in class_output
-        assert "import math" in shim_output
+        # Both bundles should contain the same cell code
+        assert "import math" in shim_bundle
+        assert "answer = 42" in shim_bundle
+
