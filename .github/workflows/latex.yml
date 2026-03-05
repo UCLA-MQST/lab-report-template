@@ -79,30 +79,40 @@ jobs:
           path: report.pdf
 
   # ── 3. LaTeX macro smoke tests ──────────────────────────────────────────
+  # hashFiles() is NOT valid in job-level if: — use a step output instead.
   test-macros:
     runs-on: ubuntu-latest
-    if: hashFiles('tests/*.tex') != ''
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check for test .tex files
+        id: check-tests
+        run: |
+          count=$(find tests -name '*.tex' 2>/dev/null | wc -l)
+          echo "has_tests=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
+        if: steps.check-tests.outputs.has_tests == 'true'
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install Python dependencies
+        if: steps.check-tests.outputs.has_tests == 'true'
         run: |
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
 
       - name: Run Snakemake (generate plot deps)
+        if: steps.check-tests.outputs.has_tests == 'true'
         run: |
           source venv/bin/activate
           mkdir -p .snakemake_cache/Library/Caches
           HOME=$(pwd)/.snakemake_cache snakemake --cores 2
 
       - name: Smoke-test LaTeX macros
+        if: steps.check-tests.outputs.has_tests == 'true'
         uses: xu-cheng/latex-action@v3
         with:
           root_file: "tests/*.tex"

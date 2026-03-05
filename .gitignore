@@ -18,6 +18,7 @@
 *.synctex.gz
 *.dvi
 *.pytxcode
+*.cut
 _minted-*
 
 # Auto-generated LaTeX fragments (re-created by nb_to_report.py)

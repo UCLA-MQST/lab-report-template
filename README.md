@@ -1,6 +1,6 @@
 # Lab Report Template
 
-This is a comprehensive, reusable directory structure for writing lab reports for MQST-related courses. It utilizes `LuaLaTeX` for advanced macro features and natively tracks short-running and long-running Python analysis pipelines via `Snakemake`, allowing for a Jupyter Notebook-like experience w.r.t. LaTeX type-setting lab reports and enabling single-source-of-truth reproducibility.
+This is a comprehensive, reusable directory structure for writing lab reports for MQST-related courses. It utilizes `LuaLaTeX` for advanced macro features and natively tracks short-running and long-running Python analysis pipelines via `Snakemake`, allowing for a Jupyter Notebook-like experience w.r.t. LaTeX type-setting lab reports and enabling single-source-of-truth reproducibility. This template can be built upon via forking—both locally and on GitHub.
 
 ---
 
