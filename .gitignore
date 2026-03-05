@@ -5,6 +5,7 @@
 *.out
 *.toc
 *.bbl
+*.bbl-SAVE-ERROR
 *.blg
 *.fls
 *.fdb_latexmk

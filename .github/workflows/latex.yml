@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  # ── 1. Python unit tests ────────────────────────────────────────────────
-  test-python:
+  # ── 1. Run all tests (Python + Macros) ──────────────────────────────────
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,109 +17,36 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run pytest
-        run: python -m pytest pycode/tests/ -v --tb=short
-
-  # ── 2. Compile LaTeX report (with Snakemake pre-pass) ───────────────────
-  build-pdf:
-    runs-on: ubuntu-latest
-    needs: test-python
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Cache Python venv
-        uses: actions/cache@v4
-        with:
-          path: venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt') }}
-
-      - name: Install Python dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
-
-      - name: Run Snakemake pipeline
-        run: |
-          source venv/bin/activate
-          mkdir -p logs .snakemake_cache/Library/Caches
-          HOME=$(pwd)/.snakemake_cache snakemake --cores 2
-
-      - name: Extract notebook fragments
-        run: |
-          source venv/bin/activate
-          python3 pycode/nb_to_report.py pycode/optical_simulator.ipynb
-
-      - name: Install TeX Live
+      - name: Install system dependencies (TeX Live)
         run: |
           sudo apt-get update
           sudo apt-get install -y texlive-full biber python3-pygments
 
-      - name: Compile PDF
+      - name: Run test-all via Makefile
+        run: make test-all
+
+  # ── 2. Compile LaTeX report ─────────────────────────────────────────────
+  build-pdf:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system dependencies (TeX Live)
         run: |
-          source venv/bin/activate
-          # First pass
-          lualatex --shell-escape -interaction=nonstopmode report.tex
-          # Bibliography
-          biber report
-          # Final pass
-          lualatex --shell-escape -interaction=nonstopmode report.tex
+          sudo apt-get update
+          sudo apt-get install -y texlive-full biber python3-pygments
+
+      - name: Build full report via Makefile
+        run: make all
 
       - name: Upload compiled PDF
         uses: actions/upload-artifact@v4
         with:
           name: report-pdf
           path: report.pdf
-
-  # ── 3. LaTeX macro smoke tests ──────────────────────────────────────────
-  # hashFiles() is NOT valid in job-level if: — use a step output instead.
-  test-macros:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for test .tex files
-        id: check-tests
-        run: |
-          count=$(find tests -name '*.tex' 2>/dev/null | wc -l)
-          echo "has_tests=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-python@v5
-        if: steps.check-tests.outputs.has_tests == 'true'
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install dependencies
-        if: steps.check-tests.outputs.has_tests == 'true'
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
-          sudo apt-get update
-          sudo apt-get install -y texlive-full python3-pygments
-
-      - name: Run Snakemake (generate plot deps)
-        if: steps.check-tests.outputs.has_tests == 'true'
-        run: |
-          source venv/bin/activate
-          mkdir -p .snakemake_cache/Library/Caches
-          HOME=$(pwd)/.snakemake_cache snakemake --cores 2
-
-      - name: Smoke-test LaTeX macros
-        if: steps.check-tests.outputs.has_tests == 'true'
-        run: |
-          source venv/bin/activate
-          for f in tests/*.tex; do
-            lualatex --shell-escape -interaction=nonstopmode "$f"
-          done

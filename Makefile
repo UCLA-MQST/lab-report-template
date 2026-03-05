@@ -3,7 +3,7 @@
 # ─── Venv setup ───────────────────────────────────────────────────────────────
 VENV    := venv
 PYTHON  := $(VENV)/bin/python3
-ACTIVATE := source $(VENV)/bin/activate
+ACTIVATE := . $(VENV)/bin/activate
 
 # Create venv if Python binary is missing
 venv: $(PYTHON)
@@ -38,14 +38,24 @@ notebooks: venv
 	  python3 pycode/nb_to_report.py pycode/optical_simulator.ipynb
 
 # ─── Python test suite ────────────────────────────────────────────────────────
-tests: venv
+test-python: venv
 	$(ACTIVATE) && \
 	  python -m pytest pycode/tests/ -v
+
+# ─── LaTeX macro smoke tests ──────────────────────────────────────────────────
+test-macros: venv
+	$(ACTIVATE) && \
+	  for f in tests/*.tex; do \
+	    lualatex -output-directory=tests --shell-escape -interaction=nonstopmode "$$f"; \
+	  done
+
+# ─── Run all tests ────────────────────────────────────────────────────────────
+test-all: test-python test-macros
 
 # ─── Clean LaTeX aux files ────────────────────────────────────────────────────
 clean:
 	rm -f *.aux *.bbl *.bcf *.blg *.fdb_latexmk *.fls *.log *.out \
-	      *.run.xml *.synctex.gz *.toc
+	      *.run.xml *.synctex.gz *.toc *.bbl-SAVE-ERROR
 	rm -rf _minted-*
 
 # ─── Full reset: also removes cached plots, notebook extracts, Snakemake state
