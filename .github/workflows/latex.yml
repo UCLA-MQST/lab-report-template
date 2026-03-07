@@ -50,3 +50,4 @@ jobs:
         with:
           name: report-pdf
           path: report.pdf
+          archive: false
