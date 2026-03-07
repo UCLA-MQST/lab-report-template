@@ -6,44 +6,47 @@ on:
   pull_request:
 
 jobs:
-  # ── 1. Run all tests (Python + Macros) ──────────────────────────────────
-  test:
+  # Job 1: Resolve the lowercase repository name for the container
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.set_image.outputs.image }}
     steps:
-      - uses: actions/checkout@v4
+      - id: set_image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:latest" >> $GITHUB_OUTPUT
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install system dependencies (TeX Live)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y texlive-full biber python3-pygments
-
-      - name: Run test-all via Makefile
-        run: make test-all
-
-  # ── 2. Compile LaTeX report ─────────────────────────────────────────────
-  build-pdf:
+  # Job 2: Run the actual build inside the custom container
+  build:
+    needs: prepare
     runs-on: ubuntu-latest
-    needs: test
+    container:
+      image: ${{ needs.prepare.outputs.image }}
+      options: --user root
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Cache Snakemake state
+        uses: actions/cache@v4
         with:
-          python-version: "3.12"
-          cache: pip
+          path: |
+            .snakemake
+            .snakemake_cache
+          key: ${{ runner.os }}-snakemake-${{ hashFiles('Snakefile', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-snakemake-
 
-      - name: Install system dependencies (TeX Live)
+      - name: Build and verify report via Makefile
         run: |
-          sudo apt-get update
-          sudo apt-get install -y texlive-full biber python3-pygments
+          # Use the pre-installed venv from the container
+          export PATH="/opt/venv/bin:$PATH"
+          make all
 
-      - name: Build full report via Makefile
-        run: make all
+      - name: Run all tests
+        run: |
+          export PATH="/opt/venv/bin:$PATH"
+          make test-all
 
       - name: Upload compiled PDF
         uses: actions/upload-artifact@v4
