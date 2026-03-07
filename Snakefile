@@ -8,7 +8,8 @@
 # Build a single target:
 #   snakemake plots/qutip_bell_simulation.png --cores 1
 
-VENV_PY = "venv/bin/python3"
+import os
+VENV_PY = os.environ.get("PYTHON", "venv/bin/python3")
 
 
 rule all:

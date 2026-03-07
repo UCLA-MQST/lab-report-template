@@ -37,9 +37,12 @@ import re
 import sys
 from pathlib import Path
 
+# Ensure pycode/ is importable (when run as python3 pycode/nb_to_report.py from root)
+_ROOT = Path(__file__).absolute().parent.parent
+if str(_ROOT / "pycode") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "pycode"))
+
 # Import shared LaTeX helpers from extract.py (sibling module).
-# nb_to_report.py is always run/imported from the repo root, with pycode/ on
-# sys.path (guaranteed by Snakemake and by the __main__ block below).
 from extract import SourceExtractor, code_float, figure_float, tex_escape
 
 # ---------------------------------------------------------------------------
@@ -186,9 +189,12 @@ class NotebookExtractor:
         self.fig_tex.write_text("\n".join(fig_lines), encoding="utf-8")
         self.code_tex.write_text("\n".join(code_lines), encoding="utf-8")
 
+        num_figs = len([l for l in fig_lines if r"\begin{figure}" in l])
+        num_cells = len([l for l in code_lines if r"\begin{Code}" in l])
+
         print(f"Written: {self.nb_cells_dir}/nb_cells.py")
-        print(f"Written: {self.fig_tex}  ({len([l for l in fig_lines if '\\begin{figure}' in l])} figures)")
-        print(f"Written: {self.code_tex}  ({len([l for l in code_lines if '\\begin{Code}' in l])} cells)")
+        print(f"Written: {self.fig_tex}  ({num_figs} figures)")
+        print(f"Written: {self.code_tex}  ({num_cells} cells)")
         print(f"Snippets in: {self.nb_cells_dir}/")
 
     # ------------------------------------------------------------------
@@ -299,8 +305,4 @@ if __name__ == "__main__":
     if not _nb.exists():
         print(f"Error: notebook not found: {_nb}", file=sys.stderr)
         sys.exit(1)
-    # Ensure pycode/ is importable (when run as python3 pycode/nb_to_report.py)
-    _pycode = Path(__file__).parent
-    if str(_pycode) not in sys.path:
-        sys.path.insert(0, str(_pycode))
     NotebookExtractor(_nb).run()

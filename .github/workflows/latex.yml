@@ -23,6 +23,11 @@ jobs:
       image: ${{ needs.prepare.outputs.image }}
       options: --user root
     
+    # Force use of pre-built container environment
+    env:
+      VENV: /opt/venv
+      PYTHON: /opt/venv/bin/python3
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,18 +44,27 @@ jobs:
 
       - name: Build and verify report via Makefile
         run: |
-          # Use the pre-installed venv from the container
-          export PATH="/opt/venv/bin:$PATH"
-          make all
+          # The environment variables VENV/PYTHON will cause Makefile
+          # to skip local venv creation and use the container's tools.
+          # We also force snakemake to show rule output on failure.
+          make all SNAKEMAKE_ARGS="--printshellcmds"
+
+      - name: Debug logs on failure
+        if: failure()
+        run: |
+          echo "--- nb_to_report.log ---"
+          cat logs/nb_to_report.log || true
+          echo "--- qutip_bell_simulation.log ---"
+          cat logs/qutip_bell_simulation.log || true
 
       - name: Run all tests
         run: |
-          export PATH="/opt/venv/bin:$PATH"
           make test-all
 
       - name: Upload compiled PDF
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: report-pdf
           path: report.pdf
+          if-no-files-found: error
           archive: false

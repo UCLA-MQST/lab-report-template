@@ -4,3 +4,4 @@ matplotlib
 qutip
 pytest
 snakemake
+nbformat

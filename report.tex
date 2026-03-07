@@ -29,6 +29,7 @@
 \usepackage{qtree}
 \usepackage{float}
 \usepackage{subcaption}
+\usepackage{luacode}  % Load this early for Lua safety hooks
 \newfloat{Code}{htbp}{loc}
 \newcommand{\Codeautorefname}{Code}
 \usepackage[
@@ -36,7 +37,24 @@
     style=numeric,
 ]{biblatex}
 \addbibresource{refs.bib}
-\usepackage[executable=venv/bin/python3]{pyluatex}
+\usepackage{fontspec}  % Better Unicode support
+\setmonofont{Latin Modern Mono}
+
+% pyluatex setup with dynamic executable path
+\usepackage[executable=\directlua{tex.sprint(os.getenv("PYTHON") or "venv/bin/python3")}]{pyluatex}
+
+\begin{luacode}
+-- Safety wrapper for pyluatex shutdown error in CI/Docker
+-- Prevents: "attempt to index a nil value (upvalue 'tcp')"
+-- Ideally: pyluatex should be updated to handle this gracefully.
+local orig_shutdown = pyluatex.shutdown
+pyluatex.shutdown = function()
+    local ok, err = pcall(orig_shutdown)
+    if not ok then
+        print("NOTE: pyluatex shutdown suppressed: " .. tostring(err))
+    end
+end
+\end{luacode}
 
 % ---- Include Custom Photonics TikZ Library ----
 \input{tikz_photonics.tex}
@@ -63,7 +81,6 @@
 }
 \usepackage{fancyvrb}
 \usepackage{etoolbox}
-\usepackage{luacode}  % provides \begin{luacode}...\end{luacode} for safe Lua in preamble
 \usepackage[disable]{todonotes}
 
 % ── Guidance-comment toggle ──────────────────────────────────────────────────

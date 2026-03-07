@@ -1,15 +1,17 @@
 .PHONY: all pdf plots notebooks tests clean deepclean
 
-# ─── Venv setup ───────────────────────────────────────────────────────────────
-VENV    := venv
-PYTHON  := $(VENV)/bin/python3
-ACTIVATE := . $(VENV)/bin/activate
+# ─── Venv setup (Overridable for CI) ──────────────────────────────────────────
+VENV    ?= venv
+PYTHON  ?= $(VENV)/bin/python3
+ACTIVATE = . $(VENV)/bin/activate
 
-# Create venv if Python binary is missing
+# Create venv if Python binary is missing (skipped if PYTHON is overridden)
 venv: $(PYTHON)
 $(PYTHON):
-	python3 -m venv $(VENV)
-	$(ACTIVATE) && pip install -q -r requirements.txt
+	@if [ "$(PYTHON)" = "venv/bin/python3" ]; then \
+	  python3 -m venv $(VENV) && \
+	  $(ACTIVATE) && pip install -q -r requirements.txt; \
+	fi
 
 # ─── BOM Validation (Single Source of Truth) ──────────────────────────────────
 validate-bom:
@@ -41,7 +43,7 @@ pdf: venv
 plots: venv
 	@mkdir -p logs
 	$(ACTIVATE) && \
-	  env HOME=$(PWD)/.snakemake_cache snakemake --cores 1
+	  env HOME=$(PWD)/.snakemake_cache snakemake --cores 1 $(SNAKEMAKE_ARGS)
 
 # ─── Notebook extraction (auto_nb_code.tex, auto_nb_figures.tex) ──────────────
 # Run this once before `make pdf` to make \input{auto_nb_code} etc. work.
