@@ -14,8 +14,8 @@ VENV_PY = "venv/bin/python3"
 rule all:
     input:
         "plots/qutip_bell_simulation.png",
-        "auto_nb_code.tex",
-        "auto_nb_figures.tex",
+        "pycode/nb_snippets/auto_nb_code.tex",
+        "pycode/nb_snippets/auto_nb_figures.tex",
 
 
 # ─── QuTiP Bell-state simulation (the main long-running computation) ──────────
@@ -42,8 +42,8 @@ rule extract_notebook:
         script   = "pycode/nb_to_report.py",
         notebook = "pycode/optical_simulator.ipynb",
     output:
-        code    = "auto_nb_code.tex",
-        figures = "auto_nb_figures.tex",
+        code    = "pycode/nb_snippets/auto_nb_code.tex",
+        figures = "pycode/nb_snippets/auto_nb_figures.tex",
     log:
         "logs/nb_to_report.log",
     shell:

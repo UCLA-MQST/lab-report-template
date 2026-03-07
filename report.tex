@@ -158,10 +158,10 @@
     \caption{#2}\label{#3}
     \renewcommand{\arraystretch}{1.15}
     \begin{tabularx}{\linewidth}{llp{1.6cm}X}\toprule
-      Category & Component & Part\,\# & Notes / key specs \\\midrule
+      Category & Component & Model & Specifications \\\midrule
       \csvreader[late after line=\\]{#1}%
-        {Category=\Cat,Component=\Comp,Part=\PartNum,Notes=\Notes}%
-        {\Cat & \Comp & \PartNum & \Notes}%
+        {Category=\Cat,Component=\Comp,Model=\Model,Specs=\Specs}%
+        {\Cat & \Comp & \Model & \Specs}%
       \\\bottomrule
     \end{tabularx}
   \end{table*}
@@ -198,15 +198,20 @@ function tex_componentlist(labparam, csvpath)
       end
     end
     local lab  = raw[5] or ""
-    if lab == labparam or lab == "all" then
+    -- If lab column is empty or "all", it matches anything requested as "all"
+    if lab == labparam or lab == "all" or (lab == "" and labparam == "all") then
       local comp  = raw[2] or ""
-      local pn    = raw[3] or ""
-      local note  = raw[4] or ""
+      local model = raw[3] or ""
+      local specs = raw[4] or ""
       local entry = "\\textbf{" .. comp .. "}"
-      if pn ~= "" then entry = entry .. " --- " .. pn end
-      if note ~= "" then
-        local short = note:match("^([^;]+)") or note
-        entry = entry .. " \\textit{(" .. short:match("^(.-)%s*$") .. ")}"
+      local detail = ""
+      if specs ~= "" then detail = specs end
+      if model ~= "" then
+        if detail ~= "" then detail = detail .. ", " .. model
+        else detail = model end
+      end
+      if detail ~= "" then
+        entry = entry .. " \\textit{(" .. detail .. ")}"
       end
       out[#out + 1] = "\\item " .. entry
     end
@@ -232,17 +237,14 @@ end
 }
 
 % ───────────────────────────────────────────────────────────────────────────
-\title{QNT SCI 410 --- [Lab Title]}
+\title{Course CODE — [Lab Title]}
 \author{[Author Names]}
 \date{\today}
 
 \begin{document}
-
 \maketitle
 
 \begin{abstract}
-% One paragraph: what was done, key methods, and the main quantitative results.
-% Avoid jargon where possible; assume a reader who knows undergraduate physics.
 [Insert Abstract Here]
 \end{abstract}
 
@@ -296,7 +298,7 @@ end
 \end{guidance}
 [Insert Procedure Here]
 
-\subsection{Equipment}
+\subsection{Materials}
 % \componentlist{<lab-tag>}{<path-to-bom.csv>}
 %   Use \laball for components shared across all sub-experiments.
 %   Use \labtagA, \labtagB etc. for sub-experiment-specific items.
@@ -308,13 +310,25 @@ end
 \subsection{Optical Setup}
 \begin{figure}[H]
     \centering
-    \begin{tikzpicture}
-        \pic (laser)    at (0,0)   {photonics_laser={Source}};
-        \pic (bs1)      at (2,0)   {photonics_bs={BS1}};
-        \pic (detector) at (4,-2)  {photonics_photodiode={D1}};
+    \begin{tikzpicture}[scale=0.8, every node/.style={scale=0.8}]
+        % Row 1: Sources and Splitters
+        \pic (laser) at (0,4)   {photonics_laser={Laser}};
+        \pic (bs1)   at (2,4)   {photonics_bs={BS}};
+        \pic (fbs)   at (4,4)   {photonics_fiber_bs={Fiber BS}};
+
+        % Row 2: Mirrors
+        \pic (m1)    at (0,2)   {photonics_mirror_planar={Planar M}};
+        \pic (m2)    at (2,2)   {photonics_mirror_concave={Concave M}};
+        \pic (m3)    at (4,2)   {photonics_mirror_bsp_right={BSP R}};
+        \pic (m4)    at (6,2)   {photonics_mirror_bsp_left={BSP L}};
+
+        % Row 3: Detection and Filtering
+        \pic (pd)    at (0,0)   {photonics_photodiode={PD}};
+        \pic (apd)   at (2,0)   {photonics_apd={APD}};
+        \pic (pol)   at (4,0)   {photonics_polarizer={Polarizer}};
     \end{tikzpicture}
-    \caption{Schematic of the optical setup (replace with your actual layout).}
-    \label{fig:setup}
+    \caption{Symbology available in the \texttt{tikz\_photonics.tex} library.}
+    \label{fig:symbology}
 \end{figure}
 
 % ===========================================================================
@@ -379,9 +393,7 @@ depicts a Werner-state model of a two-photon polarization-entangled source.
     \label{fig:qutip-sim}
 \end{figure}
 
-% ─── Notebook-extracted figures ──────────────────────────────────────────────
-% Uncomment after running: python3 pycode/nb_to_report.py
-% \input{auto_nb_figures}
+% (Notebook fragments are included at the end of the Appendix)
 
 % ─── Results tables (auto-updated from analysis CSVs) ────────────────────────
 % \csvdatatable{data/results_example.csv}%
@@ -410,20 +422,26 @@ Each function is shown as a separate listing to keep the display manageable.
 
 \pysnippetmethod[Fidelity to the singlet state $|\Psi^-\rangle$.]{pycode/generate_long_run_plot.py}{fidelity_to_singlet}{code:fn-fidelity}
 
-\pysnippetmethod[Main simulation loop and data collection.]{pycode/generate_long_run_plot.py}{run_simulation}{code:fn-sim}
+\pysnippetmethod[Simulation: Correlation $E(\alpha, 22.5^\circ)$.]{pycode/generate_long_run_plot.py}{simulate_correlation}{code:fn-sim-corr}
+\pysnippetmethod[Simulation: CHSH $S$ vs Purity $p$.]{pycode/generate_long_run_plot.py}{simulate_chsh}{code:fn-sim-chsh}
+\pysnippetmethod[Simulation: Fringe Visibility $V(\alpha)$.]{pycode/generate_long_run_plot.py}{simulate_visibility}{code:fn-sim-vis}
+\pysnippetmethod[Simulation: Fidelity to Singlet.]{pycode/generate_long_run_plot.py}{simulate_fidelity}{code:fn-sim-fid}
 
-\pysnippetmethod[Four-panel figure assembly (\texttt{matplotlib}).]{pycode/generate_long_run_plot.py}{make_figure}{code:fn-figure}
+\pysnippetmethod[Plotting: Correlation panel.]{pycode/generate_long_run_plot.py}{plot_correlation}{code:fn-fig-corr}
+\pysnippetmethod[Plotting: CHSH $S$ panel.]{pycode/generate_long_run_plot.py}{plot_chsh}{code:fn-fig-chsh}
+\pysnippetmethod[Plotting: Visibility panel.]{pycode/generate_long_run_plot.py}{plot_visibility}{code:fn-fig-vis}
+\pysnippetmethod[Plotting: Fidelity panel.]{pycode/generate_long_run_plot.py}{plot_fidelity}{code:fn-fig-fid}
 
 \subsubsection*{Notebook Output Figures}
 % Run the extraction script once, then uncomment \input{auto_nb_figures}:
 %   python3 pycode/nb_to_report.py pycode/optical_simulator.ipynb
 % Produces auto_nb_figures.tex — one \begin{figure} block per output cell.
-% \input{auto_nb_figures}
+\input{pycode/nb_snippets/auto_nb_figures}
 
 \subsubsection*{Notebook Code Cells}
 % After running nb_to_report.py above, auto_nb_code.tex contains the
 % source of each code cell as a \begin{Code}...\end{Code} float.
-% \input{auto_nb_code}
+\input{pycode/nb_snippets/auto_nb_code}
 
 % ===========================================================================
 \section{Conclusion}

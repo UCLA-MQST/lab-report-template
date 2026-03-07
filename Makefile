@@ -11,8 +11,20 @@ $(PYTHON):
 	python3 -m venv $(VENV)
 	$(ACTIVATE) && pip install -q -r requirements.txt
 
+# ─── BOM Validation (Single Source of Truth) ──────────────────────────────────
+validate-bom:
+	@HEAD=$$(head -n 1 data/bom.csv | tr -d '\r'); \
+	EXPECT="Category,Component,Model,Specs,Lab"; \
+	if [ "$$HEAD" != "$$EXPECT" ]; then \
+	  echo "ERROR: data/bom.csv header mismatch."; \
+	  echo "Expected: $$EXPECT"; \
+	  echo "Found:    $$HEAD"; \
+	  exit 1; \
+	fi
+	@echo "BOM validation passed."
+
 # ─── Full build: pipeline → notebooks → PDF ───────────────────────────────────
-all: plots notebooks pdf
+all: validate-bom plots notebooks pdf
 
 # ─── PDF compilation (lualatex → biber → lualatex × 2) ───────────────────────
 # TMPDIR/TEXMFVAR prevent Biber hitting permission-restricted system paths.
@@ -61,5 +73,6 @@ clean:
 # ─── Full reset: also removes cached plots, notebook extracts, Snakemake state
 deepclean: clean
 	rm -f plots/*.png plots/*.pdf
-	rm -f auto_nb_code.tex auto_nb_figures.tex pycode/nb_cells/
+	rm -f auto_nb_code.tex auto_nb_figures.tex
+	rm -rf pycode/nb_cells/ pycode/nb_snippets/
 	rm -rf .snakemake .snakemake_cache logs
