@@ -113,72 +113,69 @@ def fidelity_to_singlet(rho: qt.Qobj) -> float:
 # Main simulation
 # ---------------------------------------------------------------------------
 
-def run_simulation(n_angle_pts: int = 60) -> dict:
-    """
-    Run three sub-simulations and return results dict.
-
-    1. E(α, β) correlation surface for the Werner state at p = 0.85.
-    2. CHSH S vs. Werner mixing parameter p, compared to theory.
-    3. Visibility scan: singlet fringe V(α) vs. Alice angle.
-    """
-    # ── Sub-sim 1: E(α, β=22.5°) as function of α for three Werner p values ──
-    alphas = np.linspace(0, 180, n_angle_pts)
-    beta   = 22.5   # fixed Bob angle
-    E_rho  = {}
+def simulate_correlation(alphas: np.array, beta: float) -> dict:
+    """Sub-sim 1: E(α, β=22.5°) as function of α for three Werner p values."""
+    E_rho = {}
     for p in [1.0, 0.85, 0.707]:
-        rho    = werner_state(p)
+        rho = werner_state(p)
         E_rho[p] = np.array([E_from_rho(rho, a, beta) for a in alphas])
-    # Theoretical (p=1 singlet)
     E_theory = np.array([E_bell(np.deg2rad(a), np.deg2rad(beta), "singlet")
                          for a in alphas])
+    return {"E_rho": E_rho, "E_theory": E_theory}
 
-    # ── Sub-sim 2: CHSH S vs. p ──────────────────────────────────────────────
-    p_vals = np.linspace(0, 1, 80)
+
+def simulate_chsh(p_vals: np.array) -> dict:
+    """Sub-sim 2: CHSH S vs. p, compared to theory."""
     S_vals = np.array([CHSH_S_from_rho(werner_state(p)) for p in p_vals])
-    S_theory = 2 * np.sqrt(2) * p_vals  # linear in p for Werner states
+    S_theory = 2 * np.sqrt(2) * p_vals
+    return {"S_vals": S_vals, "S_theory": S_theory}
 
-    # ── Sub-sim 3: fringe visibility V(α) for the singlet ────────────────────
+
+def simulate_visibility(alphas: np.array) -> dict:
+    """Sub-sim 3: fringe visibility V(α) for the singlet and noisy states."""
     rho_singlet = werner_state(1.0)
-    rho_noisy   = werner_state(0.85)
+    rho_noisy = werner_state(0.85)
     vis_singlet = []
-    vis_noisy   = []
+    vis_noisy = []
     for a in alphas:
         Nmax_s = coincidence_rate(rho_singlet, a, 0)
         Nmin_s = coincidence_rate(rho_singlet, a, 90)
-        Nmax_n = coincidence_rate(rho_noisy,   a, 0)
-        Nmin_n = coincidence_rate(rho_noisy,   a, 90)
-        # Avoid division by zero (scale to representable counts)
-        scale  = 1000
+        Nmax_n = coincidence_rate(rho_noisy, a, 0)
+        Nmin_n = coincidence_rate(rho_noisy, a, 90)
+        scale = 1000
         V_s, _ = visibility_uncertainty(Nmax_s * scale, Nmin_s * scale)
         V_n, _ = visibility_uncertainty(Nmax_n * scale, Nmin_n * scale)
         vis_singlet.append(V_s)
         vis_noisy.append(V_n)
-
-    # ── Sub-sim 4: fidelity to singlet ───────────────────────────────────────
-    F_p = np.array([fidelity_to_singlet(werner_state(p)) for p in p_vals])
-
-    return dict(
-        alphas=alphas, beta=beta,
-        E_rho=E_rho, E_theory=E_theory,
-        p_vals=p_vals, S_vals=S_vals, S_theory=S_theory,
-        vis_singlet=np.array(vis_singlet), vis_noisy=np.array(vis_noisy),
-        F_p=F_p,
-    )
+    return {"vis_singlet": np.array(vis_singlet), "vis_noisy": np.array(vis_noisy)}
 
 
-def make_figure(res: dict, out: Path) -> None:
-    """Render the 2×2 simulation panel and save to *out*."""
-    fig, axes = plt.subplots(2, 2, figsize=(11, 8), constrained_layout=True)
-    alphas = res["alphas"]
-    p_vals = res["p_vals"]
+def simulate_fidelity(p_vals: np.array) -> np.array:
+    """Sub-sim 4: fidelity to singlet state."""
+    return np.array([fidelity_to_singlet(werner_state(p)) for p in p_vals])
 
-    # ── Panel A: E(α, 22.5°) ─────────────────────────────────────────────────
-    ax = axes[0, 0]
+
+def run_simulation(n_angle_pts: int = 60) -> dict:
+    """Run full suite of simulations."""
+    alphas = np.linspace(0, 180, n_angle_pts)
+    p_vals = np.linspace(0, 1, 80)
+    beta = 22.5
+
+    data = {"alphas": alphas, "p_vals": p_vals, "beta": beta}
+    data.update(simulate_correlation(alphas, beta))
+    data.update(simulate_chsh(p_vals))
+    data.update(simulate_visibility(alphas))
+    data["F_p"] = simulate_fidelity(p_vals)
+    return data
+
+
+def plot_correlation(ax: plt.Axes, res: dict) -> None:
+    """Panel A: E(α, 22.5°)."""
     colors = {1.0: "royalblue", 0.85: "darkorange", 0.707: "seagreen"}
     labels = {1.0: "Werner $p=1$ (singlet)", 0.85: "$p=0.85$", 0.707: "$p=1/\\sqrt{2}$"}
     for p, E in res["E_rho"].items():
-        ax.plot(alphas, E, color=colors[p], label=labels[p])
-    ax.plot(alphas, res["E_theory"], "k--", lw=1.2, alpha=0.5, label="Theory ($p=1$)")
+        ax.plot(res["alphas"], E, color=colors[p], label=labels[p])
+    ax.plot(res["alphas"], res["E_theory"], "k--", lw=1.2, alpha=0.5, label="Theory ($p=1$)")
     ax.axhline(0, color="gray", lw=0.8, ls=":")
     ax.set_xlabel(r"Alice angle $\alpha$ (deg)")
     ax.set_ylabel(r"$E(\alpha,\, 22.5°)$")
@@ -186,29 +183,28 @@ def make_figure(res: dict, out: Path) -> None:
     ax.legend(fontsize=7.5)
     ax.grid(True, alpha=0.2)
 
-    # ── Panel B: CHSH S vs. p ─────────────────────────────────────────────────
-    ax = axes[0, 1]
-    ax.plot(p_vals, res["S_vals"],   "royalblue",  lw=2,   label="QuTiP simulation")
-    ax.plot(p_vals, res["S_theory"], "k--",        lw=1.2, label=r"Theory $S=2\sqrt{2}\,p$")
-    ax.axhline(2 * np.sqrt(2), color="crimson", ls="--", lw=1,
-               label=r"QM max $2\sqrt{2}$")
-    ax.axhline(2,              color="gray",    ls=":",  lw=1,
-               label="Classical bound $|S|=2$")
-    ax.fill_between(p_vals, 2, res["S_vals"],
-                    where=res["S_vals"] > 2, alpha=0.12, color="royalblue",
-                    label="CHSH violation region")
+
+def plot_chsh(ax: plt.Axes, res: dict) -> None:
+    """Panel B: CHSH S vs. p."""
+    p_vals = res["p_vals"]
+    ax.plot(p_vals, res["S_vals"], "royalblue", lw=2, label="QuTiP simulation")
+    ax.plot(p_vals, res["S_theory"], "k--", lw=1.2, label=r"Theory $S=2\sqrt{2}\,p$")
+    ax.axhline(2 * np.sqrt(2), color="crimson", ls="--", lw=1, label=r"QM max $2\sqrt{2}$")
+    ax.axhline(2, color="gray", ls=":", lw=1, label="Classical bound $|S|=2$")
+    ax.fill_between(p_vals, 2, res["S_vals"], where=res["S_vals"] > 2, alpha=0.12, color="royalblue", label="CHSH violation region")
     ax.set_xlabel("Werner mixing parameter $p$")
     ax.set_ylabel("CHSH parameter $S$")
     ax.set_title("CHSH $S$ vs. state purity")
     ax.legend(fontsize=7.5)
     ax.grid(True, alpha=0.2)
 
-    # ── Panel C: fringe visibility ────────────────────────────────────────────
-    ax = axes[1, 0]
-    ax.plot(alphas, np.abs(res["vis_singlet"]), "royalblue",  lw=2,   label="$p=1$ (singlet)")
-    ax.plot(alphas, np.abs(res["vis_noisy"]),   "darkorange", lw=2,   label="$p=0.85$ (noisy)")
-    ax.axhline(1 / np.sqrt(2), color="gray", ls="--", lw=1,
-               label=r"CHSH threshold $1/\sqrt{2}$")
+
+def plot_visibility(ax: plt.Axes, res: dict) -> None:
+    """Panel C: fringe visibility."""
+    alphas = res["alphas"]
+    ax.plot(alphas, np.abs(res["vis_singlet"]), "royalblue", lw=2, label="$p=1$ (singlet)")
+    ax.plot(alphas, np.abs(res["vis_noisy"]), "darkorange", lw=2, label="$p=0.85$ (noisy)")
+    ax.axhline(1 / np.sqrt(2), color="gray", ls="--", lw=1, label=r"CHSH threshold $1/\sqrt{2}$")
     ax.set_xlabel(r"Alice angle $\alpha$ (deg)")
     ax.set_ylabel("Visibility $V$")
     ax.set_title("Polarization fringe visibility")
@@ -216,8 +212,10 @@ def make_figure(res: dict, out: Path) -> None:
     ax.legend(fontsize=7.5)
     ax.grid(True, alpha=0.2)
 
-    # ── Panel D: fidelity to singlet ─────────────────────────────────────────
-    ax = axes[1, 1]
+
+def plot_fidelity(ax: plt.Axes, res: dict) -> None:
+    """Panel D: fidelity to singlet."""
+    p_vals = res["p_vals"]
     ax.plot(p_vals, res["F_p"], "royalblue", lw=2)
     ax.fill_between(p_vals, 0, res["F_p"], alpha=0.15, color="royalblue")
     ax.axhline(0.5, color="gray", ls="--", lw=1, label="Entanglement threshold")
@@ -226,6 +224,15 @@ def make_figure(res: dict, out: Path) -> None:
     ax.set_title("Singlet fidelity vs. state purity")
     ax.legend(fontsize=7.5)
     ax.grid(True, alpha=0.2)
+
+
+def make_figure(res: dict, out: Path) -> None:
+    """Render the 2×2 simulation panel and save to *out*."""
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8), constrained_layout=True)
+    plot_correlation(axes[0, 0], res)
+    plot_chsh(axes[0, 1], res)
+    plot_visibility(axes[1, 0], res)
+    plot_fidelity(axes[1, 1], res)
 
     fig.suptitle(
         "QuTiP Bell-state simulation — Werner state model\n"

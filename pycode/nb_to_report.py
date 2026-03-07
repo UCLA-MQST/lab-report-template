@@ -47,15 +47,15 @@ from extract import SourceExtractor, code_float, figure_float, tex_escape
 # ---------------------------------------------------------------------------
 
 NB_PATH: Path = Path("analysis.ipynb")   # fallback notebook path
-FIG_TEX: Path = Path("auto_nb_figures.tex")
-CODE_TEX: Path = Path("auto_nb_code.tex")
-NB_CELLS_DIR: Path = Path("pycode/nb_cells")
+FIG_TEX: Path = Path("pycode/nb_snippets/auto_nb_figures.tex")
+CODE_TEX: Path = Path("pycode/nb_snippets/auto_nb_code.tex")
+NB_CELLS_DIR: Path = Path("pycode/nb_snippets")
 PLOTS_DIR: Path = Path("plots")
 
 # Map plot filename → (latex_label, caption_text).
 # The label must match any existing \\label{} in report.tex.
 FIGURE_META: dict[str, tuple[str, str]] = {
-    # "my_plot.png": ("fig:my-plot", r"Caption text here."),
+    "nb_cavity_decay.png": ("fig:nb-cavity-decay", r"QuTiP simulation of a Fock $|3\rangle$ state decaying in a lossy cavity ($\kappa=1$)."),
 }
 
 # Width overrides for wide/narrow figures (default is \\linewidth).
@@ -99,6 +99,8 @@ class NotebookExtractor:
         code_tex: Path = CODE_TEX,
         nb_cells_dir: Path = NB_CELLS_DIR,
         plots_dir: Path = PLOTS_DIR,
+        wrap_code: bool = True,
+        max_width: int = 60,
     ) -> None:
         self.nb_path = nb_path
         self.figure_meta: dict[str, tuple[str, str]] = figure_meta or FIGURE_META
@@ -107,6 +109,8 @@ class NotebookExtractor:
         self.code_tex = code_tex
         self.nb_cells_dir = nb_cells_dir
         self.plots_dir = plots_dir
+        self.wrap_code = wrap_code
+        self.max_width = max_width
         self._extractor = SourceExtractor()   # shared LaTeX helpers
 
     # ------------------------------------------------------------------
@@ -150,6 +154,9 @@ class NotebookExtractor:
             if not code:
                 continue
 
+            if self.wrap_code:
+                code = self._wrap_code(code, max_width=self.max_width)
+
             # Append to runnable Python bundle
             sep = "─" * 56
             py_lines += [f"\n# {sep}\n# {current_heading}\n# {sep}", code, ""]
@@ -169,7 +176,7 @@ class NotebookExtractor:
                 f"# Notebook cell — {current_heading}\n{code}\n",
                 encoding="utf-8",
             )
-            snippet_rel = f"pycode/nb_cells/_nb_{snippet_name}.py"
+            snippet_rel = f"{self.nb_cells_dir}/_nb_{snippet_name}.py"
             code_lines += code_float(snippet_rel, current_heading)
 
         # Write outputs
@@ -180,9 +187,57 @@ class NotebookExtractor:
         self.code_tex.write_text("\n".join(code_lines), encoding="utf-8")
 
         print(f"Written: {self.nb_cells_dir}/nb_cells.py")
-        print(f"Written: {self.fig_tex}  ({fig_lines.count(r'\\begin{figure}')} figures)")
-        print(f"Written: {self.code_tex}  ({code_lines.count(r'\\begin{Code}')} cells)")
+        print(f"Written: {self.fig_tex}  ({len([l for l in fig_lines if '\\begin{figure}' in l])} figures)")
+        print(f"Written: {self.code_tex}  ({len([l for l in code_lines if '\\begin{Code}' in l])} cells)")
         print(f"Snippets in: {self.nb_cells_dir}/")
+
+    # ------------------------------------------------------------------
+    # Line wrapping logic
+    # ------------------------------------------------------------------
+
+    def _wrap_code(self, code: str, max_width: int = 75) -> str:
+        """
+        Wrap long Python lines (primarily at dots in method chains).
+        """
+        lines = code.splitlines()
+        wrapped = []
+        for line in lines:
+            if len(line) <= max_width:
+                wrapped.append(line)
+                continue
+
+            # Heuristic wrapping at dots
+            cur = line
+            cumulative_open = 0
+            while len(cur) > max_width:
+                best_match = None
+                for m in re.finditer(r"[^\s]\.", cur):
+                    if m.start() < max_width - 2:
+                        best_match = m
+                    else:
+                        break
+                
+                if not best_match:
+                    break
+                    
+                split_idx = best_match.start() + 1
+                prefix = cur[:split_idx]
+                suffix = cur[split_idx:]
+                
+                # Update cumulative open count from the prefix
+                cumulative_open += prefix.count('(') - prefix.count(')')
+                
+                # Check parens to see if we need a backslash
+                if cumulative_open <= 0:
+                    prefix += "\\"
+                
+                wrapped.append(prefix)
+                indent = re.match(r"^(\s*)", line).group(1)
+                cur = indent + "    " + suffix
+                
+            wrapped.append(cur)
+            
+        return "\n".join(wrapped)
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -200,6 +255,7 @@ class NotebookExtractor:
             "os.chdir(ROOT)",
             "sys.path.insert(0, str(ROOT / 'pycode'))",
             "",
+            "# ---------------------------------------------------------------------------",
         ]
 
     @staticmethod
