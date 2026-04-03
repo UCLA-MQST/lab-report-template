@@ -81,12 +81,14 @@ git pull                                      # get collaborators' changes
 **Verify install:**
 ```bash
 lualatex --version    # should print something like "LuaHBTeX, Version 1.17"
-biber --version       # bibliography processor (included in MacTeX)
+bibtex --version      # bibliography processor for RevTeX (natbib)
+biber --version       # bibliography processor for legacy article format (biblatex)
 ```
 
 **Key concepts:**
 - `--shell-escape` is required because `pyluatex` spawns a Python subprocess during compilation.
-- Three-pass build (`lualatex → biber → lualatex`) resolves cross-references and bibliography entries.
+- **RevTeX format** (recommended): `lualatex → bibtex → lualatex × 2` (uses natbib, not biber).
+- **Legacy article format**: `lualatex → biber → lualatex × 2` (uses biblatex).
 - `TMPDIR=/tmp TEXMFVAR=/tmp/texmf-var` are set to avoid macOS/OneDrive path permission issues.
 
 **Resources:**
@@ -113,11 +115,13 @@ pip install snakemake
 
 **Using the Makefile in this repo:**
 ```bash
-make all        # run Snakemake pipeline + compile PDF (full build)
-make pdf        # compile PDF only (assumes plots are up-to-date)
-make plots      # run Snakemake pipeline only (regenerate analysis outputs)
-make clean      # remove LaTeX auxiliary files
-make deepclean  # also remove cached plots
+make all                    # full pipeline: BOM validation + plots + notebooks + PDF
+make pdf                    # compile revtex_report.pdf (RevTeX, recommended)
+make REPORT=report pdf      # compile report.pdf (legacy article format)
+make pdf-legacy             # compile report.pdf with biber (article + biblatex)
+make plots                  # run Snakemake pipeline only (regenerate analysis outputs)
+make clean                  # remove LaTeX auxiliary files
+make deepclean              # also remove cached plots
 ```
 
 **Adding a new analysis script:** Add a rule to `Snakefile`:
@@ -196,6 +200,38 @@ git add requirements.txt && git commit -m "add <new-package> dependency"
 **Resources:**
 - [Python venv docs](https://docs.python.org/3/library/venv.html) — official reference
 - [pip user guide](https://pip.pypa.io/en/stable/user_guide/) — install, freeze, and manage packages
+
+---
+
+## Starting a New Lab Report
+
+```bash
+# 1. Fork this template (GitHub) or clone it locally
+git clone https://github.com/UCLA-MQST/lab-report-template.git my-lab
+cd my-lab
+
+# 2. Set up Python environment
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Edit the report
+#    - revtex_report.tex: fill in title, authors, sections
+#    - labreport.sty: customize if needed (lab tags, BOM columns)
+#    - refs.bib: add your bibliography entries
+#    - data/bom.csv: add your equipment
+#    - pycode/: add analysis scripts
+
+# 4. Build
+make pdf    # produces revtex_report.pdf
+
+# 5. Full pipeline (analysis + notebook extraction + PDF)
+make all
+```
+
+**Customizing per lab:**
+- Set `\showguidancefalse` in `labreport.sty` before final submission (hides guidance comments)
+- The `\componentlist{tag}{data/bom.csv}` macro filters by the Lab column — set tags like `3a`, `3b`, `all`
+- `\nbcellXxx` macros (from notebook extraction) can be placed anywhere in the report
 
 ---
 
@@ -342,7 +378,14 @@ echo "Written .vscode/settings.json"
 
 ### Verifying the Setup
 
-After applying settings, open `lab3/report.tex` → press **Ctrl+Alt+B** (VS Code) or **Ctrl+Shift+B** → select recipe **"LuaLaTeX + Biber (full)"**. The PDF should appear in the side panel within 30–60 seconds.
+After applying settings, open `revtex_report.tex` → press **Ctrl+Alt+B** (VS Code) or **Ctrl+Shift+B** → select recipe **"LuaLaTeX + Biber (full)"**. The PDF should appear in the side panel within 30–60 seconds.
+
+> [!NOTE]
+> For RevTeX reports, VS Code LaTeX Workshop should use `bibtex` instead of `biber`. Add a second recipe if needed:
+> ```jsonc
+> { "name": "LuaLaTeX + BibTeX (RevTeX)", "tools": ["lualatex-shell", "bibtex-tool", "lualatex-shell", "lualatex-shell"] }
+> ```
+> with tool: `{ "name": "bibtex-tool", "command": "bibtex", "args": ["%DOCFILE%"] }`
 
 ## Automated GitHub Actions (CI/CD)
 
@@ -357,14 +400,13 @@ The `.github/workflows/latex.yml` pipeline runs on every push to `main`:
 
 ## Notebook Extraction Pipeline
 
-Running `python3 pycode/nb_to_report.py` from the lab directory reads the notebook specified by `NB_PATH` and emits three outputs:
+Running `python3 pycode/nb_to_report.py` from the lab directory reads the notebook specified by `NB_PATH` and emits:
 
 | Output | Purpose |
 |---|---|
 | `auto_nb_figures.tex` | `\begin{figure}` blocks for each recognized plot; `\input` this in your Results section |
-| `auto_nb_code.tex` | `\lstinputlisting` blocks for each code cell; `\input` this in your Analysis Code section |
-| `pycode/nb_cells/_nb_*.py` | One snippet file per cell (used by the LaTeX listing above) |
-| `pycode/nb_cells/nb_cells.py` | All cells concatenated — runnable standalone for debugging |
+| `auto_nb_code.tex` | `\newcommand{\nbcellXxx}` macros wrapping `\lstinputlisting` for each code cell — call `\nbcellXxx` anywhere in the report |
+| `pycode/nb_snippets/_nb_*.py` | One snippet file per cell (used by the LaTeX listing above) |
 
 **Configure per-lab** by editing three constants at the top of `pycode/nb_to_report.py`:
 
@@ -376,11 +418,15 @@ FIGURE_META  = {                            # plot filename → (label, caption)
 WIDTH        = {"fringe.png": "0.75\\linewidth"}  # optional size overrides
 ```
 
-Then in `report.tex`:
+Then in `revtex_report.tex`:
 
 ```latex
-\input{auto_nb_figures}   % inside \section{Results}
-\input{auto_nb_code}      % inside \subsection{Analysis Code}
+\input{pycode/nb_snippets/auto_nb_code}      % defines \nbcellXxx macros
+\input{pycode/nb_snippets/auto_nb_figures}    % inside \section{Results}
+
+% Use individual cells anywhere:
+\nbcellMyAnalysis       % renders that specific code cell
+\nbcellChiSquaredFit    % renders another
 ```
 
 > [!NOTE]
