@@ -1,0 +1,144 @@
+\documentclass[aps,prl,twocolumn,10pt,superscriptaddress]{revtex4-2}
+
+\usepackage{labreport}
+
+\begin{document}
+
+% Define notebook cells extraction macros (if using auto-extracted code)
+% \input{pycode/nb_snippets/auto_nb_code}
+
+\title{QNT SCI 410 - Lab N: [Title]}
+
+\author{Gregory Sinaga}
+\email{gregorysinaga@ucla.edu}
+\affiliation{Department of Physics and Astronomy, University of California, Los Angeles}
+
+\author{[Lab Partner]}
+\affiliation{Department of Physics and Astronomy, University of California, Los Angeles}
+
+\date{\today}
+
+\begin{abstract}
+% Include key quantitative results: measured values with uncertainties,
+% statistical significance of violations, and figure-of-merit comparisons.
+% Target: 150-250 words. Every number should appear here.
+[Abstract text with key numerical results and uncertainties.]
+\end{abstract}
+
+\maketitle
+
+% ===========================================================================
+\section{Introduction and Background}
+% ===========================================================================
+
+\begin{guidance}
+Provide context for the experiment: what physical phenomena are being explored,
+how this connects to previous labs, and what the key theoretical predictions are.
+Use \emph{} for introduced terms. Cite lecture notes and textbooks.
+Target: 1-2 columns. End with a roadmap paragraph listing the experiments.
+\end{guidance}
+
+% [Introduction text]
+
+% Subsections for key concepts:
+% \subsection*{Concept A}
+% \subsection*{Concept B}
+
+% ===========================================================================
+\section{Theory}
+\label{sec:theory}
+% ===========================================================================
+
+\begin{guidance}
+Formal derivations and equations needed to interpret the data.
+Number all key equations with \verb|\begin{equation}...\end{equation}|.
+Cross-reference equations in the text with \verb|\autoref{eq:label}|.
+Use notation consistent with lecture notes (Campbell) and manuals (qutools).
+\end{guidance}
+
+% \subsection{Subsection A}
+% \subsection{Subsection B}
+
+% ===========================================================================
+\section{Experimental Procedure}
+% ===========================================================================
+
+\begin{guidance}
+Split into subsections per experiment/lab session.
+Each subsection needs: Equipment table, detailed procedure (numbered steps),
+and a TikZ or photograph figure of the setup.
+Use \verb|\bomtable| or inline equipment tables.
+\end{guidance}
+
+% \subsection{Lab Na --- [Experiment A]}
+% \label{subsec:proc-a}
+
+% \noindent\textbf{Equipment:}
+% \begin{table*}[t]
+% ... equipment table ...
+% \end{table*}
+
+% \paragraph{Detailed Procedure:}
+% \begin{enumerate}
+%   \item \textbf{Step 1:} ...
+%   \item \textbf{Step 2:} ...
+% \end{enumerate}
+
+% ===========================================================================
+\section{Data Acquisition, Analysis and Discussion}
+% ===========================================================================
+
+\begin{guidance}
+Present results with discussion interleaved (not separated).
+For each experiment:
+  1. State the experimental goal in one sentence (\emph{Experimental Goal.})
+  2. Present raw data (table or figure)
+  3. Show analysis (fits, derived quantities with uncertainties)
+  4. Discuss: what does this mean physically? Compare to theory.
+  5. Identify systematic effects and limitations.
+
+Every figure must be referenced in text. Every number needs uncertainty.
+Every quantitative claim needs physical interpretation (2-3 sentences).
+Use \verb|\csvdatatable| for data tables from CSV files.
+Use \verb|\pythonsnippet| for analysis code listings.
+\end{guidance}
+
+% \subsection{Lab Na --- [Experiment A Results]}
+% \subsubsection{Raw Data}
+% \subsubsection{Analysis}
+% \subsubsection{Discussion}
+
+% \subsection{Uncertainty Analysis and Error Propagation}
+% \subsubsection{Statistical Sources}
+% \subsubsection{Systematic Uncertainties}
+
+% \subsection{Goodness-of-Fit Assessment}
+% chi-squared analysis
+
+% ===========================================================================
+\section{Conclusion}
+% ===========================================================================
+
+\begin{guidance}
+Summarize key findings from each experiment with numbers.
+State what was demonstrated and its significance.
+Acknowledge limitations (loopholes, systematic effects).
+Suggest improvements for future work.
+Target: 1 column.
+\end{guidance}
+
+% ===========================================================================
+\appendix
+\onecolumngrid
+\section{Raw Data Tables}
+\label{app:raw-data}
+% ===========================================================================
+
+% Full raw data tables go here (if too large for main body).
+
+% ===========================================================================
+\bibliographystyle{apsrev4-2}
+\bibliography{refs}
+% ===========================================================================
+
+\end{document}

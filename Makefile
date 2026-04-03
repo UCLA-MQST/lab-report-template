@@ -28,9 +28,23 @@ validate-bom:
 # ─── Full build: pipeline → notebooks → PDF ───────────────────────────────────
 all: validate-bom plots notebooks pdf
 
-# ─── PDF compilation (lualatex → biber → lualatex × 2) ───────────────────────
-# TMPDIR/TEXMFVAR prevent Biber hitting permission-restricted system paths.
+# ─── PDF compilation ─────────────────────────────────────────────────────────
+# RevTeX format: lualatex → bibtex → lualatex × 2 (natbib, not biber)
+# Legacy article format: lualatex → biber → lualatex × 2
+REPORT ?= revtex_report
+
 pdf: venv
+	$(ACTIVATE) && \
+	  export TMPDIR=/tmp && \
+	  export TEXMFVAR=/tmp/texmf-var && \
+	  export PYTHON=$(PYTHON) && \
+	  lualatex --shell-escape -interaction=nonstopmode $(REPORT).tex && \
+	  bibtex $(REPORT) && \
+	  lualatex --shell-escape -interaction=nonstopmode $(REPORT).tex && \
+	  lualatex --shell-escape -interaction=nonstopmode $(REPORT).tex
+
+# Legacy article build (if needed)
+pdf-legacy: venv
 	$(ACTIVATE) && \
 	  export TMPDIR=/tmp && \
 	  export TEXMFVAR=/tmp/texmf-var && \

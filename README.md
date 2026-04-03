@@ -1,6 +1,21 @@
 # Lab Report Template
 
-This is a comprehensive, reusable directory structure for writing lab reports for MQST-related courses. It utilizes `LuaLaTeX` for advanced macro features and natively tracks short-running and long-running Python analysis pipelines via `Snakemake`, allowing for a Jupyter Notebook-like experience w.r.t. LaTeX type-setting lab reports and enabling single-source-of-truth reproducibility. This template can be built upon via forking—both locally and on GitHub.
+Reusable directory structure for physics lab reports (MQST / QNT SCI courses). Uses **RevTeX 4-2** (APS/PRL style, two-column) with **LuaLaTeX** for Python integration, `Snakemake` for reproducible analysis pipelines, and notebook extraction for code listings.
+
+**Key files:**
+- `revtex_report.tex` — Main report (RevTeX 4-2 format, recommended)
+- `report.tex` — Legacy article format (kept for backward compatibility)
+- `labreport.sty` — Shared style package (macros, math, TikZ, CSV tables, BOM, code floats)
+- `tikz_photonics.tex` — Custom TikZ library for quantum optics diagrams
+- `Snakefile` — Analysis pipeline (notebook extraction, plot generation)
+- `Makefile` — Build: `make pdf` (RevTeX) or `make pdf-legacy` (article)
+
+**Quick start:**
+```bash
+make pdf                    # build revtex_report.pdf (lualatex + bibtex)
+make REPORT=report pdf      # build report.pdf (legacy article format)
+make all                    # full pipeline: BOM validation + plots + notebooks + PDF
+```
 
 ---
 

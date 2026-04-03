@@ -173,14 +173,25 @@ class NotebookExtractor:
                 fig_lines += figure_float(plot_file, label, caption, width=w)
 
             # Code float for this cell
+            macro_suffix = re.sub(r"[^a-zA-Z]+", "", current_heading.title())
+            if not macro_suffix:
+                macro_suffix = "Cell"
+
             snippet_name = re.sub(r"[^a-z0-9]+", "_", current_heading.lower()).strip("_")
+            if not snippet_name:
+                snippet_name = "cell"
             snippet_path = self.nb_cells_dir / f"_nb_{snippet_name}.py"
             snippet_path.write_text(
                 f"# Notebook cell — {current_heading}\n{code}\n",
                 encoding="utf-8",
             )
             snippet_rel = f"{self.nb_cells_dir}/_nb_{snippet_name}.py"
-            code_lines += code_float(snippet_rel, current_heading)
+            
+            lines_for_float = code_float(snippet_rel, current_heading)
+            code_lines.append(f"\\newcommand{{\\nbcell{macro_suffix}}}{{%")
+            code_lines.extend(lines_for_float)
+            code_lines.append("}%")
+            code_lines.append("")
 
         # Write outputs
         (self.nb_cells_dir / "nb_cells.py").write_text(

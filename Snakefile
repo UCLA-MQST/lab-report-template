@@ -6,7 +6,7 @@
 # Build all outputs:
 #   snakemake --cores 1
 # Build a single target:
-#   snakemake plots/qutip_bell_simulation.png --cores 1
+#   snakemake plots/my_figure.png --cores 1
 
 import os
 VENV_PY = os.environ.get("PYTHON", "venv/bin/python3")
@@ -14,34 +14,23 @@ VENV_PY = os.environ.get("PYTHON", "venv/bin/python3")
 
 rule all:
     input:
-        "plots/qutip_bell_simulation.png",
         "pycode/nb_snippets/auto_nb_code.tex",
         "pycode/nb_snippets/auto_nb_figures.tex",
+        # Add plot targets here as you create analysis scripts:
+        # "plots/my_figure.png",
 
 
-# ─── QuTiP Bell-state simulation (the main long-running computation) ──────────
-rule qutip_bell_simulation:
-    input:
-        script = "pycode/generate_long_run_plot.py",
-        deps   = [
-            "pycode/photon_statistics.py",
-            "pycode/errors.py",
-        ],
-    output:
-        plot = "plots/qutip_bell_simulation.png",
-    log:
-        "logs/qutip_bell_simulation.log",
-    shell:
-        f"{VENV_PY} {{input.script}} {{output.plot}} > {{log}} 2>&1"
+# ─── Notebook extraction (*.ipynb → auto_nb_*.tex) ──────────────────────────
+# Produces auto_nb_code.tex (code cells as \nbcellXxx macros)
+# and auto_nb_figures.tex (figure outputs) for use in the report via:
+#   \input{pycode/nb_snippets/auto_nb_code}
+#   \nbcellMyAnalysis   % renders the code cell
+NOTEBOOK ?= pycode/analysis.ipynb
 
-
-# ─── Notebook extraction (optical_simulator.ipynb → auto_nb_*.tex) ────────────
-# Produces auto_nb_code.tex (code cells) and auto_nb_figures.tex (figure outputs)
-# for use in the report via: \input{auto_nb_code} / \input{auto_nb_figures}
 rule extract_notebook:
     input:
         script   = "pycode/nb_to_report.py",
-        notebook = "pycode/optical_simulator.ipynb",
+        notebook = NOTEBOOK,
     output:
         code    = "pycode/nb_snippets/auto_nb_code.tex",
         figures = "pycode/nb_snippets/auto_nb_figures.tex",
@@ -51,7 +40,7 @@ rule extract_notebook:
         f"{VENV_PY} {{input.script}} {{input.notebook}} > {{log}} 2>&1"
 
 
-# ─── Template for additional analysis rules ───────────────────────────────────
+# ─── Template for analysis rules ─────────────────────────────────────────────
 # Uncomment and adapt for each new script:
 #
 # rule my_analysis:

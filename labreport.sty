@@ -1,0 +1,249 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{labreport}[2026/04/03 Generalized Lab Report Style for RevTeX]
+
+% --- Core Packages ---
+\usepackage{amsmath,amsthm,amsfonts,amssymb,amscd,mathtools}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{csvsimple}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{enumerate}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage[caption=false]{subfig}
+\newfloat{Code}{htbp}{loc}
+\newcommand{\Codeautorefname}{Code}
+\usepackage{mathrsfs}
+\usepackage{textcomp}
+\usepackage{upgreek}
+\usepackage{luacode}
+\usepackage{comment}
+
+% --- Conditional Caption Override (Avoid RevTeX conflicts) ---
+\makeatletter
+\@ifclassloaded{revtex4-2}{
+  % RevTeX has its own caption system — don't override.
+}{
+  \newcommand{\captionstar}[1]{%
+    \par\vspace{4pt}\centering\scriptsize\textit{#1}\par\vspace{4pt}
+  }
+  \let\oldcaption\caption
+  \renewcommand{\caption}{\@ifstar{\captionstar}{\oldcaption}}
+}
+\makeatother
+
+% --- Bibliography Setup ---
+% RevTeX defaults to natbib. Use \bibliography{refs} in the main .tex file.
+% Do NOT load biblatex — it conflicts with RevTeX.
+
+% --- TikZ & Quantum Optics Packages ---
+\usepackage{tikz}
+\usepackage{yquant}[compat=newest]
+\usepackage{quantikz}
+\usepackage{circuitikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,decorations.pathmorphing,calc}
+
+% --- Python Integration (Requires lualatex --shell-escape) ---
+% Override executable via PYTHON env var: PYTHON=/path/to/python lualatex ...
+\usepackage[executable=\directlua{tex.sprint(os.getenv("PYTHON") or "venv/bin/python3")}]{pyluatex}
+
+\begin{luacode}
+-- Safety wrapper for pyluatex shutdown error in CI/Docker
+if pyluatex then
+    local orig_shutdown = pyluatex.shutdown
+    pyluatex.shutdown = function()
+        local ok, err = pcall(orig_shutdown)
+        if not ok then
+            print("NOTE: pyluatex shutdown suppressed: " .. tostring(err))
+        end
+    end
+end
+\end{luacode}
+
+% --- Custom Math Commands ---
+\newcommand{\Arg}{\textrm{Arg}}
+\def\res{\mathop{\textrm{Res}}\limits}
+\newcommand{\Mod}[1]{\ (\mathrm{mod}\ #1)}
+\DeclareMathOperator{\lcm}{lcm}
+\providecommand{\bra}[1]{\langle #1|}
+\providecommand{\ket}[1]{|#1\rangle}
+\providecommand{\braket}[2]{\langle #1|#2\rangle}
+\DeclareMathOperator{\Span}{Span}
+\DeclareMathOperator{\trace}{tr}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\nl}{null}
+\DeclarePairedDelimiterX{\inpr}[2]{\langle}{\rangle}{#1\, ,\,\mathopen{}#2}
+\DeclareMathOperator{\img}{Im}
+\newcommand{\fqed}{\relax\ifmmode \tag*{$\blacksquare$}\else \hfill$\blacksquare$\fi}
+\newcommand{\iqed}{\relax\ifmmode \tag*{$\square$}\else \hfill$\square$\fi}
+
+% --- Section Formatting ---
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+
+% --- Python Code Listing Style ---
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{orange!80!black},
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=true,
+  frame=single,
+  framesep=3pt,
+  rulecolor=\color{black!20},
+  backgroundcolor=\color{black!3},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=5pt,
+  xleftmargin=12pt,
+  captionpos=b,
+  literate=
+    {θ}{{$\theta$}}1 {φ}{{$\varphi$}}1 {δ}{{$\delta$}}1 {Δ}{{$\Delta$}}1
+    {σ}{{$\sigma$}}1 {μ}{{$\mu$}}1 {≤}{{$\leq$}}1 {≥}{{$\geq$}}1
+    {²}{{$^2$}}1 {±}{{$\pm$}}1 {°}{{$^\circ$}}1,
+}
+
+% --- Guidance Toggle ---
+% \showguidancetrue  → show inline how-to comments (drafting mode)
+% \showguidancefalse → hide them (submission mode)
+\newif\ifshowguidance
+\showguidancetrue
+\ifshowguidance
+  \includecomment{guidance}
+\else
+  \excludecomment{guidance}
+\fi
+
+% --- Code Float Commands ---
+% \pythonsnippet[caption]{file}{label} — code listing without execution
+\newcommand{\pythonsnippet}[3][]{%
+  \begin{Code}[h]
+    \vspace{2pt}%
+    \lstinputlisting[language=Python]{#2}%
+    \vspace{2pt}%
+    \ifx\relax#1\relax\else\caption{#1}\fi
+    \ifx\relax#3\relax\else\label{#3}\fi
+  \end{Code}%
+}
+
+% --- CSV Data Tables ---
+% \csvdatatable{file}{caption}{label}{col-spec}{header-row}{data-row}
+\newcommand{\csvdatatable}[6]{%
+  \begin{table}[H]
+    \centering\footnotesize
+    \renewcommand{\arraystretch}{1.1}
+    \csvreader[
+      tabular={#4},
+      head to column names,
+      table head={\toprule #5},
+      table foot=\bottomrule,
+      late after line=\\,
+    ]{#1}{}{#6}
+    \caption{#2}
+    \label{#3}
+  \end{table}
+}
+
+% Wide variant (spans both columns)
+\newcommand{\csvdatatablewide}[6]{%
+  \begin{table*}[t]
+    \centering\footnotesize
+    \renewcommand{\arraystretch}{1.1}
+    \csvreader[
+      tabular={#4},
+      head to column names,
+      table head={\toprule #5},
+      table foot=\bottomrule,
+      late after line=\\,
+    ]{#1}{}{#6}
+    \caption{#2}
+    \label{#3}
+  \end{table*}
+}
+
+% --- BOM Table (full width) ---
+% \bomtable{csv-file}{caption}{label}
+% CSV columns: Category, Component, Model, Specs
+\newcommand{\bomtable}[3]{%
+  \begin{table*}[t]
+    \centering\footnotesize
+    \caption{#2}\label{#3}
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabularx}{\linewidth}{llp{1.6cm}X}\toprule
+      Category & Component & Model & Specifications \\\midrule
+      \csvreader[late after line=\\]{#1}%
+        {Category=\Cat,Component=\Comp,Model=\Model,Specs=\Specs}%
+        {\Cat & \Comp & \Model & \Specs}%
+      \\\bottomrule
+    \end{tabularx}
+  \end{table*}
+}
+
+% --- Lua Component List Helper ---
+\begin{luacode}
+function tex_componentlist(labparam, csvpath)
+  local f = io.open(csvpath, "r")
+  if not f then
+    tex.sprint("\\emph{(BOM file not found: " .. csvpath .. ")}")
+    return
+  end
+  local _header = f:read("*l")
+  local out = {}
+  for line in f:lines() do
+    local raw = {}
+    local inside = false
+    local cur = ""
+    for ch in (line .. ","):gmatch(".") do
+      if ch == '"' then
+        inside = not inside
+      elseif ch == "," and not inside then
+        raw[#raw + 1] = cur:match("^%s*(.-)%s*$")
+        cur = ""
+      else
+        cur = cur .. ch
+      end
+    end
+    local lab = raw[5] or ""
+    if lab == labparam or lab == "all" or (lab == "" and labparam == "all") then
+      local comp  = raw[2] or ""
+      local model = raw[3] or ""
+      local specs = raw[4] or ""
+      local entry = "\\textbf{" .. comp .. "}"
+      local detail = ""
+      if specs ~= "" then detail = specs end
+      if model ~= "" then
+        if detail ~= "" then detail = detail .. ", " .. model
+        else detail = model end
+      end
+      if detail ~= "" then
+        entry = entry .. " \\emph{(" .. detail .. ")}"
+      end
+      out[#out + 1] = "\\item " .. entry
+    end
+  end
+  f:close()
+  if #out > 0 then
+    tex.sprint("\\begin{itemize}[noitemsep,topsep=2pt,leftmargin=1.6em]")
+    for _, s in ipairs(out) do tex.sprint(s) end
+    tex.sprint("\\end{itemize}")
+  else
+    tex.sprint("\\emph{(No components found for " .. labparam .. ")}")
+  end
+end
+\end{luacode}
+
+\newcommand{\componentlist}[2]{%
+  \directlua{tex_componentlist(\luastring{#1}, \luastring{#2})}%
+}
+
+% --- TikZ Photonics Components ---
+\input{tikz_photonics.tex}
+
+\endinput
